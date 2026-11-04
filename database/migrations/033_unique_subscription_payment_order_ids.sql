@@ -1,0 +1,3 @@
+CREATE UNIQUE INDEX subscription_payments_provider_order_idx
+ON subscription_payments (payment_provider, provider_order_id)
+WHERE provider_order_id IS NOT NULL;
