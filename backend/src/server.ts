@@ -1,47 +1,37 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
+
+import app from "./app";
 import { pool } from "./config/db";
+import { env } from "./config/env";
 
-dotenv.config();
+const server = app.listen(env.PORT, () => {
+  console.log(`KarurTrufs API running on port ${env.PORT}`);
+});
 
-const app = express();
+// Graceful shutdown
+let isShuttingDown = false;
 
-app.use(cors());
-app.use(express.json());
+function shutdown(signal: string) {
+  if (isShuttingDown) return;
 
-// Basic server health check
-app.get("/api/v1/health", (req, res) => {
-  res.json({
-    success: true,
-    message: "KarurTrufs API is running",
+  isShuttingDown = true;
+
+  console.log(`\n${signal} received. Shutting down server...`);
+
+  server.close(async (error) => {
+    if (error) {
+      console.error("Error closing HTTP server:", error);
+      process.exitCode = 1;
+    }
+
+    try {
+      await pool.end();
+      console.log("PostgreSQL connection pool closed.");
+    } catch (dbError) {
+      console.error("Error closing PostgreSQL pool:", dbError);
+      process.exitCode = 1;
+    }
   });
-});
+}
 
-// Database connection test
-app.get("/api/v1/health/db", async (req, res) => {
-  try {
-    const result = await pool.query(
-      "SELECT current_database(), current_user, NOW()"
-    );
-
-    res.json({
-      success: true,
-      message: "Database connected successfully",
-      database: result.rows[0],
-    });
-  } catch (error) {
-    console.error("Database connection failed:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Database connection failed",
-    });
-  }
-});
-
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`KarurTrufs API running on port ${PORT}`);
-});
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
