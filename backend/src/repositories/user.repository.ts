@@ -4,7 +4,7 @@ export const findUserByEmail = async (email: string) => {
   const result = await pool.query(
     `SELECT id, full_name, email, phone, password_hash
      FROM users
-     WHERE email = $1`,
+     WHERE LOWER(email) = LOWER($1)`,
     [email]
   );
 

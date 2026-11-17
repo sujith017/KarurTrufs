@@ -6,7 +6,7 @@ import { env } from "./config/env";
 import { notFound } from "./middleware/notFound";
 import { errorHandler } from "./middleware/errorHandler";
 import userRoutes from "./routes/user.routes";
-
+import authRoutes from "./routes/auth.routes";
 
 const app = express();
 
@@ -52,6 +52,7 @@ app.get("/api/v1/health/db", async (req, res) => {
 
 app.use("/api/v1/users", userRoutes);
 
+app.use("/api/v1/auth", authRoutes);
 
 
 
