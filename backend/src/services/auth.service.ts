@@ -1,4 +1,4 @@
-import { findUserByIdentifier } from "../repositories/user.repository";
+// import { findUserByIdentifier } from "../repositories/user.repository";
 import {
   createSession,
   rotateSession,
@@ -13,7 +13,13 @@ import {
 } from "../utils/token";
 import { AppError } from "../utils/AppError";
 import { env } from "../config/env";
+import { issueOtp, verifyOtp } from "./otp.service";
 
+import {
+  findUserByIdentifier,
+  findUserById,
+  markPhoneVerified,
+} from "../repositories/user.repository";
 export const loginUser = async (
   data: { identifier: string; password: string },
   context: { deviceInfo: string | null; ipAddress: string | null },
@@ -114,4 +120,61 @@ export const logoutCurrentSession = async (auth: {
 export const logoutAllSessions = async (auth: { userId: string }) => {
   const count = await revokeAllUserSessions(auth.userId);
   return { revokedSessions: count };
+};
+
+export const sendPhoneVerificationOtp = async (auth: { userId: string }) => {
+  const user = await findUserById(auth.userId);
+
+  if (!user || !user.is_active) {
+    throw new AppError("Account unavailable", 403);
+  }
+
+  if (!user.phone) {
+    throw new AppError("No phone number on this account", 400);
+  }
+
+  // Don't send (and pay for) a code the user doesn't need
+  if (user.phone_verified_at) {
+    throw new AppError("Phone number is already verified", 409);
+  }
+
+  // The phone comes from OUR database, never from the request
+  return issueOtp({ phone: user.phone, purpose: "PHONE_VERIFICATION" });
+};
+
+export const verifyPhoneOtp = async (
+  auth: { userId: string },
+  code: string
+) => {
+  const user = await findUserById(auth.userId);
+
+  if (!user || !user.is_active) {
+    throw new AppError("Account unavailable", 403);
+  }
+
+  if (!user.phone) {
+    throw new AppError("No phone number on this account", 400);
+  }
+
+  if (user.phone_verified_at) {
+    throw new AppError("Phone number is already verified", 409);
+  }
+
+  // Throws "Invalid or expired code" unless the code is right
+  await verifyOtp({
+    phone: user.phone,
+    purpose: "PHONE_VERIFICATION",
+    code,
+  });
+
+  const updated = await markPhoneVerified(user.id, user.phone);
+
+  if (!updated) {
+    throw new AppError(
+      "Phone number changed. Please request a new code.",
+      409
+    );
+  }
+
+  return { phoneVerified: true };
 };

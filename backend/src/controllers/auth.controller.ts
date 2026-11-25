@@ -1,5 +1,5 @@
 import type { RequestHandler } from "express";
-import { loginUser,refreshSession , logoutCurrentSession , logoutAllSessions} from "../services/auth.service";
+import { loginUser,refreshSession , logoutCurrentSession , logoutAllSessions,sendPhoneVerificationOtp , verifyPhoneOtp} from "../services/auth.service";
 
 export const loginController: RequestHandler = async (req, res) => {
   const result = await loginUser(req.body, {
@@ -42,6 +42,27 @@ export const logoutAllController: RequestHandler = async (req, res) => {
   res.status(200).json({
     success: true,
     message: "Logged out from all devices",
+    data: result,
+  });
+};
+
+export const sendPhoneOtpController: RequestHandler = async (req, res) => {
+  const result = await sendPhoneVerificationOtp(req.auth!);
+
+  // Never return the code itself, only when it expires
+  res.status(200).json({
+    success: true,
+    message: "Verification code sent",
+    data: { expiresAt: result.expiresAt },
+  });
+};
+
+export const verifyPhoneOtpController: RequestHandler = async (req, res) => {
+  const result = await verifyPhoneOtp(req.auth!, req.body.code);
+
+  res.status(200).json({
+    success: true,
+    message: "Phone number verified",
     data: result,
   });
 };

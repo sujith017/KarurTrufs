@@ -75,3 +75,29 @@ export const findUserByIdentifier = async (identifier: string) => {
 
   return result.rows[0] ?? null;
 };
+
+export const findUserById = async (id: string) => {
+  const result = await pool.query(
+    `SELECT id, phone, is_active, phone_verified_at
+     FROM users
+     WHERE id = $1`,
+    [id]
+  );
+
+  return result.rows[0] ?? null;
+};
+// Marks the phone verified, but only if it is still the same number we verified
+export const markPhoneVerified = async (
+  userId: string,
+  phone: string
+): Promise<boolean> => {
+  const result = await pool.query(
+    `UPDATE users
+     SET phone_verified_at = NOW(), updated_at = NOW()
+     WHERE id = $1 AND phone = $2
+     RETURNING id`,
+    [userId, phone]
+  );
+
+  return result.rowCount === 1;
+};

@@ -22,3 +22,19 @@ export const refreshLimiter = rateLimit({
   legacyHeaders: false,
   message: tooManyRequests("Too many requests. Please try again later."),
 });
+// OTP sending: each send costs money and can annoy a real person
+export const otpSendLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: tooManyRequests("Too many code requests. Please try again later."),
+});
+// OTP verification: guessing happens here
+export const otpVerifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: tooManyRequests("Too many verification attempts. Please try again later."),
+});
